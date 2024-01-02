@@ -47,34 +47,56 @@ router.put('/:id', getThought, async (req, res) => {
 });
 
 // DELETE remove a thought by id
-router.delete('/:id', getThought, async (req, res) => {
-  try {
-    await res.thought.remove();
-    res.json({ message: 'Deleted Thought' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+router.delete('/:id', async (req, res) => {
+    try {
+        const thought = await Thought.findByIdAndDelete(req.params.id);
+        if (!thought) {
+            return res.status(404).json({ message: 'Thought not found' });
+        }
+        res.json({ message: 'Deleted Thought' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // POST a new reaction
-router.post('/:id/reactions', getThought, async (req, res) => {
-  try {
-    const newReaction = new Thought(req.body);
-    const savedReaction = await newReaction.save();
-    res.status(201).json(savedReaction);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+router.post('/:thoughtId/reactions', async (req, res) => {
+    try {
+        const thought = await Thought.findById(req.params.thoughtId);
+        if (!thought) {
+            return res.status(404).json({ message: 'Thought not found' });
+        }
+
+        thought.reactions.push(req.body);
+        const updatedThought = await thought.save();
+
+        res.status(201).json(updatedThought);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
 });
 
 // DELETE remove a reaction by id
-router.delete('/:id/reactions', getThought, async (req, res) => {
-  try {
-    await res.thought.remove();
-    res.json({ message: 'Deleted Reaction' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+router.delete('/:thoughtId/reactions/:reactionId', async (req, res) => {
+    try {
+        const thought = await Thought.findById(req.params.thoughtId);
+        if (!thought) {
+            return res.status(404).json({ message: 'Thought not found' });
+        }
+
+        const reaction = thought.reactions.find(r => r.reactionId.toString() === req.params.reactionId);
+        if (!reaction) {
+            return res.status(404).json({ message: 'Reaction not found' });
+        }
+
+        const index = thought.reactions.indexOf(reaction);
+        thought.reactions.splice(index, 1);
+        await thought.save();
+
+        res.json({ message: 'Deleted Reaction' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // Middleware function to get a thought by id, called by GET, PUT, and DELETE
